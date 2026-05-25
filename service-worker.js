@@ -1,5 +1,5 @@
-const cacheName = "crowdloop-shell-v3";
-const appShell = ["./", "./index.html", "./styles.css?v=3", "./app.js?v=3", "./manifest.json", "./assets/social-ai-visual.png"];
+const cacheName = "crowdloop-shell-v5";
+const appShell = ["./", "./index.html", "./styles.css?v=5", "./app.js?v=5", "./manifest.json", "./assets/social-ai-visual.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(cacheName).then((cache) => cache.addAll(appShell)));

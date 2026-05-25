@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#111111" />
     <title>Crowdloop</title>
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="styles.css?v=3" />
+    <link rel="stylesheet" href="styles.css?v=5" />
   </head>
   <body>
     <div class="app-shell">
@@ -84,6 +84,33 @@
                 Sound or topic
                 <input id="post-audio" maxlength="48" placeholder="Original audio, behind the scenes, launch notes" />
               </label>
+              <label>
+                Upload image or video
+                <input id="post-media" type="file" accept="image/*,video/*" />
+              </label>
+              <div class="editor-controls">
+                <label>
+                  Filter
+                  <select id="post-filter">
+                    <option value="none">None</option>
+                    <option value="warm">Warm</option>
+                    <option value="cool">Cool</option>
+                    <option value="contrast">Contrast</option>
+                  </select>
+                </label>
+                <label>
+                  Brightness
+                  <input id="post-brightness" type="range" min="70" max="130" value="100" />
+                </label>
+                <label>
+                  Trim start
+                  <input id="post-trim-start" type="number" min="0" max="120" value="0" />
+                </label>
+                <label>
+                  Trim end
+                  <input id="post-trim-end" type="number" min="0" max="120" value="15" />
+                </label>
+              </div>
               <div class="style-picker" aria-label="Media style">
                 <label><input type="radio" name="mediaStyle" value="pulse" checked /><span class="style-chip pulse"></span></label>
                 <label><input type="radio" name="mediaStyle" value="aqua" /><span class="style-chip aqua"></span></label>
@@ -92,7 +119,7 @@
               </div>
               <div class="button-row">
                 <button class="secondary-button" type="button" id="ai-caption">AI caption</button>
-                <button class="primary-button" type="submit">Publish</button>
+                <button class="primary-button" id="publish-button" type="submit">Publish</button>
               </div>
             </form>
 
@@ -151,6 +178,17 @@
           </div>
         </section>
 
+        <section class="view" id="studio-view" data-view="studio" aria-label="Creator studio">
+          <section class="panel">
+            <div class="panel-heading">
+              <h1>Creator studio</h1>
+              <span class="pill">metrics</span>
+            </div>
+            <div class="metric-grid" id="metric-grid"></div>
+          </section>
+          <section class="studio-grid" id="studio-grid"></section>
+        </section>
+
         <section class="view" id="profile-view" data-view="profile" aria-label="Profile">
           <section class="profile-header" id="profile-header"></section>
           <section class="profile-grid" id="profile-grid"></section>
@@ -175,6 +213,6 @@
       <nav class="mobile-nav" id="mobile-nav" aria-label="Mobile navigation"></nav>
     </div>
 
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=5"></script>
   </body>
 </html>

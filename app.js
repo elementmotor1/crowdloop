@@ -5,6 +5,7 @@ const navItems = [
   { id: "reels", label: "Reels", icon: "M8 3h8l4 6v12H4V9Z M8 3l4 6m4-6-4 6" },
   { id: "create", label: "Create", icon: "M12 5v14M5 12h14" },
   { id: "proposals", label: "Polls", icon: "M5 5h14v9H8l-3 3V5Z" },
+  { id: "studio", label: "Studio", icon: "M4 19V5M9 19v-8M14 19V8M19 19v-5" },
   { id: "inbox", label: "Inbox", icon: "M4 5h16v14H4Z M4 7l8 6 8-6" },
   { id: "profile", label: "Profile", icon: "M20 21a8 8 0 0 0-16 0M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" },
 ];
@@ -12,6 +13,8 @@ const navItems = [
 const seed = {
   currentView: "home",
   activeProfile: "me",
+  editingPostId: "",
+  draftMedia: null,
   role: "member",
   threshold: 60,
   creators: [
@@ -32,6 +35,12 @@ const seed = {
       likes: 12842,
       shares: 631,
       saves: 2204,
+      views: 84300,
+      reports: [],
+      filter: "none",
+      brightness: 100,
+      trimStart: 0,
+      trimEnd: 24,
       liked: false,
       saved: false,
       comments: [
@@ -49,6 +58,12 @@ const seed = {
       likes: 8210,
       shares: 214,
       saves: 980,
+      views: 51900,
+      reports: [],
+      filter: "warm",
+      brightness: 108,
+      trimStart: 0,
+      trimEnd: 16,
       liked: false,
       saved: true,
       comments: [{ user: "nova", text: "The edit history should stay visible." }],
@@ -63,11 +78,18 @@ const seed = {
       likes: 6475,
       shares: 151,
       saves: 1201,
+      views: 38400,
+      reports: [],
+      filter: "contrast",
+      brightness: 96,
+      trimStart: 0,
+      trimEnd: 0,
       liked: true,
       saved: false,
       comments: [{ user: "kai", text: "This is how platform roadmaps should feel." }],
     },
   ],
+  skippedSuggestionIds: [],
   proposals: [
     {
       id: "proposal-1",
@@ -125,7 +147,18 @@ function loadState() {
   if (!stored) return structuredClone(seed);
   try {
     const parsed = JSON.parse(stored);
-    return { ...structuredClone(seed), ...parsed };
+    const next = { ...structuredClone(seed), ...parsed };
+    next.posts = next.posts.map((post) => ({
+      views: Math.max(1000, post.likes * 6),
+      reports: [],
+      filter: "none",
+      brightness: 100,
+      trimStart: 0,
+      trimEnd: post.type === "video" ? 15 : 0,
+      ...post,
+    }));
+    next.skippedSuggestionIds ||= [];
+    return next;
   } catch {
     return structuredClone(seed);
   }
@@ -158,6 +191,11 @@ function initials(person) {
 function score(proposal) {
   const total = proposal.yes + proposal.no;
   return total ? Math.round((proposal.yes / total) * 100) : 0;
+}
+
+function latestPollingProposal() {
+  return state.proposals.find((proposal) => proposal.status === "polling" && !state.skippedSuggestionIds.includes(proposal.id)) ||
+    state.proposals.find((proposal) => proposal.status === "polling");
 }
 
 function renderNav() {
@@ -211,12 +249,26 @@ function renderCreatorButton(person) {
   `;
 }
 
+function mediaStyle(post) {
+  const filterMap = {
+    none: "",
+    warm: " sepia(0.18) saturate(1.16)",
+    cool: " hue-rotate(14deg) saturate(1.08)",
+    contrast: " contrast(1.22) saturate(1.08)",
+  };
+  return `filter: brightness(${post.brightness || 100}%)${filterMap[post.filter || "none"] || ""};`;
+}
+
 function renderMedia(post, compactMode = false) {
   const person = creator(post.creatorId);
-  const mediaImage = post.media ? `<img src="${post.media}" alt="" />` : "";
+  const mediaAsset = post.media
+    ? post.mediaType === "video"
+      ? `<video src="${post.media}" muted loop playsinline controls></video>`
+      : `<img src="${post.media}" alt="" />`
+    : "";
   return `
-    <div class="media ${post.style}">
-      ${mediaImage}
+    <div class="media ${post.style}" style="${mediaStyle(post)}">
+      ${mediaAsset}
       <div class="media-content">
         <span>${post.type === "video" ? "Short video" : "Photo"}</span>
         <strong>${escapeHtml(compactMode ? person.name : post.caption.split(" ").slice(0, 8).join(" "))}</strong>
@@ -228,9 +280,11 @@ function renderMedia(post, compactMode = false) {
 function renderFeed() {
   const filtered = state.posts.filter((post) => matchesSearch(`${post.caption} ${creator(post.creatorId).name} ${creator(post.creatorId).handle}`));
   $("#feed-list").innerHTML =
-    filtered
+    `${renderLatestSuggestion()}${
+      filtered
       .map((post) => {
         const person = creator(post.creatorId);
+        const ownPost = post.creatorId === "me";
         return `
           <article class="post-card" data-post-card="${post.id}">
             <header class="post-head">
@@ -243,6 +297,13 @@ function renderFeed() {
                 <button class="action-button" data-like="${post.id}" type="button">${post.liked ? "Liked" : "Like"} ${compact(post.likes)}</button>
                 <button class="action-button" data-save="${post.id}" type="button">${post.saved ? "Saved" : "Save"} ${compact(post.saves)}</button>
                 <button class="action-button" data-share="${post.id}" type="button">Share ${compact(post.shares)}</button>
+                <button class="action-button" data-report="${post.id}" type="button">Report</button>
+                ${ownPost ? `<button class="action-button" data-edit-post="${post.id}" type="button">Edit</button>` : ""}
+              </div>
+              <div class="mini-metrics">
+                <span>${compact(post.views || post.likes * 6)} views</span>
+                <span>${post.reports?.length || 0} reports</span>
+                <span>${post.type === "video" ? `${post.trimStart || 0}s-${post.trimEnd || 15}s` : "image"}</span>
               </div>
               <p class="post-caption"><strong>${escapeHtml(person.handle)}</strong> ${escapeHtml(post.caption)}</p>
               <p class="muted">${escapeHtml(post.audio)}</p>
@@ -255,7 +316,33 @@ function renderFeed() {
           </article>
         `;
       })
-      .join("") || `<div class="empty-state">No posts match that search.</div>`;
+      .join("") || `<div class="empty-state">No posts match that search.</div>`}`;
+}
+
+function renderLatestSuggestion() {
+  const proposal = latestPollingProposal();
+  if (!proposal) return "";
+  return `
+    <article class="suggestion-card">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Latest crowd suggested update</p>
+          <h2>${escapeHtml(proposal.title)}</h2>
+        </div>
+        <span class="pill">${score(proposal)}%</span>
+      </div>
+      <p>${escapeHtml(proposal.detail)}</p>
+      <form class="quick-suggest" id="quick-suggest-form">
+        <input name="suggestion" maxlength="160" placeholder="Suggest a change to the app" />
+        <button class="secondary-button" type="submit">Suggest</button>
+      </form>
+      <div class="action-row">
+        <button class="primary-button" data-vote-yes="${proposal.id}" type="button">Yes</button>
+        <button class="secondary-button" data-vote-no="${proposal.id}" type="button">No</button>
+        <button class="secondary-button" data-skip-suggestion="${proposal.id}" type="button">Skip</button>
+      </div>
+    </article>
+  `;
 }
 
 function renderSuggestedCreators() {
@@ -281,7 +368,8 @@ function renderReels() {
     .map((post) => {
       const person = creator(post.creatorId);
       return `
-        <article class="reel ${post.style}">
+        <article class="reel ${post.style}" style="${mediaStyle(post)}">
+          ${post.media ? post.mediaType === "video" ? `<video src="${post.media}" muted loop playsinline controls></video>` : `<img src="${post.media}" alt="" />` : ""}
           <div class="reel-main">
             ${renderCreatorButton(person)}
             <h1>${escapeHtml(post.caption)}</h1>
@@ -358,6 +446,48 @@ function renderInbox() {
     .join("");
 }
 
+function renderStudio() {
+  const posts = state.posts.filter((post) => post.creatorId === "me");
+  const totals = posts.reduce(
+    (sum, post) => {
+      sum.views += post.views || 0;
+      sum.likes += post.likes || 0;
+      sum.saves += post.saves || 0;
+      sum.shares += post.shares || 0;
+      sum.reports += post.reports?.length || 0;
+      return sum;
+    },
+    { views: 0, likes: 0, saves: 0, shares: 0, reports: 0 }
+  );
+  $("#metric-grid").innerHTML = [
+    ["Views", totals.views],
+    ["Likes", totals.likes],
+    ["Saves", totals.saves],
+    ["Shares", totals.shares],
+    ["Reports", totals.reports],
+  ]
+    .map(([label, value]) => `<article class="metric-card"><strong>${compact(value)}</strong><span>${label}</span></article>`)
+    .join("");
+  $("#studio-grid").innerHTML =
+    posts
+      .map(
+        (post) => `
+          <article class="studio-card">
+            <div class="studio-thumb ${post.style}" style="${mediaStyle(post)}">${post.media ? post.mediaType === "video" ? `<video src="${post.media}" muted playsinline></video>` : `<img src="${post.media}" alt="" />` : ""}</div>
+            <div>
+              <h3>${escapeHtml(post.caption)}</h3>
+              <p class="muted">${compact(post.views || 0)} views · ${compact(post.likes || 0)} likes · ${post.reports?.length || 0} reports</p>
+              <div class="action-row">
+                <button class="secondary-button" data-edit-post="${post.id}" type="button">Edit</button>
+                <button class="secondary-button" data-route="home" type="button">Open</button>
+              </div>
+            </div>
+          </article>
+        `
+      )
+      .join("") || `<div class="empty-state">Publish a post to start tracking metrics.</div>`;
+}
+
 function renderProfile() {
   const person = creator(state.activeProfile);
   const posts = state.posts.filter((post) => post.creatorId === person.id);
@@ -384,9 +514,63 @@ function renderCreatePreview() {
   const type = $("#post-type").value;
   const caption = $("#post-caption").value.trim() || "Your new post preview appears here.";
   const style = new FormData($("#create-post-form")).get("mediaStyle") || "pulse";
+  const filter = $("#post-filter").value;
+  const brightness = $("#post-brightness").value;
   $("#preview-media").className = `preview-media ${style}`;
+  $("#preview-media").style.cssText = mediaStyle({ filter, brightness });
   $("#preview-type").textContent = type === "video" ? "Short video" : "Photo carousel";
   $("#preview-caption").textContent = caption;
+  const existing = $("#preview-media").querySelector("img, video");
+  if (state.draftMedia?.data) {
+    const media = state.draftMedia.kind === "video" ? document.createElement("video") : document.createElement("img");
+    media.src = state.draftMedia.data;
+    if (state.draftMedia.kind === "video") {
+      media.muted = true;
+      media.loop = true;
+      media.playsInline = true;
+      media.controls = true;
+    }
+    media.alt = "";
+    existing?.replaceWith(media);
+  } else if (!existing || existing.tagName.toLowerCase() === "video") {
+    const img = document.createElement("img");
+    img.src = "assets/social-ai-visual.png";
+    img.alt = "";
+    if (existing) existing.replaceWith(img);
+    else $("#preview-media").prepend(img);
+  } else {
+    existing.src = "assets/social-ai-visual.png";
+  }
+}
+
+function beginEditPost(id) {
+  const post = state.posts.find((item) => item.id === id);
+  if (!post) return;
+  state.editingPostId = id;
+  state.draftMedia = post.media ? { data: post.media, kind: post.mediaType || "image" } : null;
+  $("#post-type").value = post.type;
+  $("#post-caption").value = post.caption;
+  $("#post-audio").value = post.audio;
+  $("#post-filter").value = post.filter || "none";
+  $("#post-brightness").value = post.brightness || 100;
+  $("#post-trim-start").value = post.trimStart || 0;
+  $("#post-trim-end").value = post.trimEnd || (post.type === "video" ? 15 : 0);
+  const styleInput = document.querySelector(`[name="mediaStyle"][value="${post.style}"]`);
+  if (styleInput) styleInput.checked = true;
+  $("#publish-button").textContent = "Save edits";
+  setView("create");
+  renderCreatePreview();
+}
+
+function clearComposer() {
+  $("#create-post-form").reset();
+  $("#post-filter").value = "none";
+  $("#post-brightness").value = "100";
+  $("#post-trim-start").value = "0";
+  $("#post-trim-end").value = "15";
+  $("#publish-button").textContent = "Publish";
+  state.editingPostId = "";
+  state.draftMedia = null;
 }
 
 function renderAll() {
@@ -399,6 +583,7 @@ function renderAll() {
   renderProposals();
   renderReview();
   renderInbox();
+  renderStudio();
   renderProfile();
   renderCreatePreview();
   saveState();
@@ -455,8 +640,20 @@ document.addEventListener("click", (event) => {
   if (target.dataset.like) updatePost(target.dataset.like, (post) => { post.liked = !post.liked; post.likes += post.liked ? 1 : -1; });
   if (target.dataset.save) updatePost(target.dataset.save, (post) => { post.saved = !post.saved; post.saves += post.saved ? 1 : -1; });
   if (target.dataset.share) updatePost(target.dataset.share, (post) => { post.shares += 1; addActivity(creator(post.creatorId).id, "shared a post"); });
+  if (target.dataset.report) {
+    updatePost(target.dataset.report, (post) => {
+      post.reports ||= [];
+      post.reports.push({ id: crypto.randomUUID(), reason: "Community report", time: new Date().toISOString() });
+      addActivity("me", "reported a post for review");
+    });
+  }
+  if (target.dataset.editPost) beginEditPost(target.dataset.editPost);
   if (target.dataset.voteYes) updateProposal(target.dataset.voteYes, (proposal) => { proposal.yes += 1; addActivity("me", `voted yes on ${proposal.title}`); });
   if (target.dataset.voteNo) updateProposal(target.dataset.voteNo, (proposal) => { proposal.no += 1; addActivity("me", `voted no on ${proposal.title}`); });
+  if (target.dataset.skipSuggestion) {
+    state.skippedSuggestionIds.push(target.dataset.skipSuggestion);
+    renderAll();
+  }
   if (target.dataset.accept) updateProposal(target.dataset.accept, (proposal) => { proposal.status = "accepted"; proposal.decision = "Approved by owner after community polling."; });
   if (target.dataset.reject) updateProposal(target.dataset.reject, (proposal) => { proposal.status = "rejected"; proposal.decision = "Declined by owner after review."; });
 });
@@ -470,6 +667,24 @@ document.addEventListener("submit", (event) => {
     updatePost(commentForm.dataset.commentForm, (post) => post.comments.push({ user: "you", text }));
     commentForm.reset();
   }
+
+  const quickSuggestForm = event.target.closest("#quick-suggest-form");
+  if (quickSuggestForm) {
+    event.preventDefault();
+    const text = new FormData(quickSuggestForm).get("suggestion").trim();
+    if (!text) return;
+    state.proposals.unshift({
+      id: crypto.randomUUID(),
+      title: text.slice(0, 72),
+      detail: "Suggested from the top of the feed. Community voting decides whether it reaches owner review.",
+      yes: 1,
+      no: 0,
+      status: "polling",
+      decision: "",
+    });
+    quickSuggestForm.reset();
+    renderAll();
+  }
 });
 
 $("#create-post-form").addEventListener("submit", (event) => {
@@ -477,22 +692,39 @@ $("#create-post-form").addEventListener("submit", (event) => {
   const form = event.currentTarget;
   const caption = $("#post-caption").value.trim();
   if (!caption) return;
-  state.posts.unshift({
+  const postData = {
     id: crypto.randomUUID(),
     creatorId: "me",
     type: $("#post-type").value,
     style: new FormData(form).get("mediaStyle"),
+    media: state.draftMedia?.data || "",
+    mediaType: state.draftMedia?.kind || ($("#post-type").value === "video" ? "video" : "image"),
     caption,
     audio: $("#post-audio").value.trim() || "Original audio",
+    filter: $("#post-filter").value,
+    brightness: Number($("#post-brightness").value),
+    trimStart: Number($("#post-trim-start").value) || 0,
+    trimEnd: Number($("#post-trim-end").value) || 0,
+    views: Math.floor(Math.random() * 900) + 100,
+    reports: [],
     likes: 0,
     shares: 0,
     saves: 0,
     liked: false,
     saved: false,
     comments: [],
-  });
-  form.reset();
-  addActivity("me", "published a new post");
+  };
+  if (state.editingPostId) {
+    const index = state.posts.findIndex((post) => post.id === state.editingPostId);
+    if (index >= 0) {
+      state.posts[index] = { ...state.posts[index], ...postData, id: state.editingPostId, creatorId: "me" };
+    }
+    addActivity("me", "edited a post");
+  } else {
+    state.posts.unshift(postData);
+    addActivity("me", "published a new post");
+  }
+  clearComposer();
   setView("home");
   renderAll();
 });
@@ -523,6 +755,7 @@ $("#refine-proposal").addEventListener("click", () => {
 
 $("#reset-demo").addEventListener("click", () => {
   state = structuredClone(seed);
+  clearComposer();
   setView("home");
   renderAll();
 });
@@ -539,6 +772,21 @@ thresholdRange.addEventListener("input", (event) => {
 
 searchInput.addEventListener("input", renderFeed);
 $("#create-post-form").addEventListener("input", renderCreatePreview);
+$("#post-media").addEventListener("change", (event) => {
+  const file = event.target.files?.[0];
+  if (!file) {
+    state.draftMedia = null;
+    renderCreatePreview();
+    return;
+  }
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    state.draftMedia = { data: reader.result, kind: file.type.startsWith("video/") ? "video" : "image" };
+    $("#post-type").value = state.draftMedia.kind === "video" ? "video" : "photo";
+    renderCreatePreview();
+  });
+  reader.readAsDataURL(file);
+});
 
 window.addEventListener("hashchange", () => {
   setView(location.hash.replace("#", "") || "home");
