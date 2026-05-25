@@ -2,38 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#111111" />
     <title>Crowdloop</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="styles.css?v=3" />
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar" aria-label="Primary">
-        <a class="brand" href="#feed" aria-label="Crowdloop home">
+      <aside class="rail" aria-label="Primary navigation">
+        <a class="brand" href="#home" data-route="home" aria-label="Crowdloop home">
           <span class="brand-mark">C</span>
           <span>Crowdloop</span>
         </a>
-        <nav class="nav-list" aria-label="Sections">
-          <a class="nav-link active" href="#feed" data-view-link="feed">
-            <span class="icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M3 9.5 12 3l9 6.5V21h-6v-6H9v6H3Z" /></svg>
-            </span>
-            Feed
-          </a>
-          <a class="nav-link" href="#proposals" data-view-link="proposals">
-            <span class="icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M5 5h14v9H8l-3 3V5Z" /></svg>
-            </span>
-            Proposals
-          </a>
-          <a class="nav-link" href="#review" data-view-link="review">
-            <span class="icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6Z" /><path d="M9 13h6M9 17h6M9 9h3" /></svg>
-            </span>
-            Review
-          </a>
-        </nav>
-        <div class="account-switcher">
+        <nav class="rail-nav" id="desktop-nav"></nav>
+        <div class="mode-card">
           <label for="role-select">Mode</label>
           <select id="role-select">
             <option value="member">Member</option>
@@ -42,126 +25,156 @@
         </div>
       </aside>
 
-      <main>
-        <header class="topbar">
-          <div>
-            <p class="eyebrow">AI native social platform</p>
-            <h1 id="view-title">Creator feed</h1>
+      <main class="main">
+        <header class="appbar">
+          <a class="mobile-brand" href="#home" data-route="home" aria-label="Crowdloop home">
+            <span class="brand-mark">C</span>
+            <span>Crowdloop</span>
+          </a>
+          <div class="search-wrap">
+            <input id="search-input" type="search" placeholder="Search creators, posts, proposals" autocomplete="off" />
           </div>
-          <div class="topbar-actions">
-            <button class="icon-button" id="reset-demo" type="button" aria-label="Reset demo data" title="Reset demo data">
-              <svg viewBox="0 0 24 24"><path d="M4 4v6h6" /><path d="M20 11A8 8 0 1 1 7.8 4.2L4 10" /></svg>
-            </button>
-            <button class="primary-button" id="open-suggestion" type="button">
-              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
-              Suggest
-            </button>
-          </div>
+          <button class="icon-button" id="reset-demo" type="button" aria-label="Reset demo" title="Reset demo">
+            <svg viewBox="0 0 24 24"><path d="M4 4v6h6" /><path d="M20 11A8 8 0 1 1 7.8 4.2L4 10" /></svg>
+          </button>
         </header>
 
-        <section class="view active" id="feed-view" data-view="feed">
-          <div class="feed-layout">
-            <section class="reel-stage" aria-label="Featured creator reel">
-              <img src="assets/social-ai-visual.png" alt="Abstract social media collage with creator tiles and voting UI" />
-              <div class="reel-overlay">
+        <section class="view active" id="home-view" data-view="home" aria-label="Home feed">
+          <div class="content-grid">
+            <section>
+              <div class="stories" id="stories"></div>
+              <div class="feed-list" id="feed-list"></div>
+            </section>
+            <aside class="right-panel">
+              <section class="panel">
+                <div class="panel-heading">
+                  <h2>Now building</h2>
+                  <span class="pill">live</span>
+                </div>
+                <p class="muted">The app routes feature requests through polls, then lets the owner approve what ships.</p>
+              </section>
+              <section class="panel" id="suggested-creators"></section>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" id="reels-view" data-view="reels" aria-label="Reels">
+          <div class="reels-shell" id="reels-list"></div>
+        </section>
+
+        <section class="view" id="create-view" data-view="create" aria-label="Create post">
+          <section class="create-grid">
+            <form class="panel create-form" id="create-post-form">
+              <div class="panel-heading">
+                <h1>Create</h1>
+                <span class="pill">AI assisted</span>
+              </div>
+              <label>
+                Format
+                <select id="post-type">
+                  <option value="video">Short video</option>
+                  <option value="photo">Photo carousel</option>
+                </select>
+              </label>
+              <label>
+                Caption
+                <textarea id="post-caption" maxlength="220" placeholder="What are you sharing?"></textarea>
+              </label>
+              <label>
+                Sound or topic
+                <input id="post-audio" maxlength="48" placeholder="Original audio, behind the scenes, launch notes" />
+              </label>
+              <div class="style-picker" aria-label="Media style">
+                <label><input type="radio" name="mediaStyle" value="pulse" checked /><span class="style-chip pulse"></span></label>
+                <label><input type="radio" name="mediaStyle" value="aqua" /><span class="style-chip aqua"></span></label>
+                <label><input type="radio" name="mediaStyle" value="sunset" /><span class="style-chip sunset"></span></label>
+                <label><input type="radio" name="mediaStyle" value="mono" /><span class="style-chip mono"></span></label>
+              </div>
+              <div class="button-row">
+                <button class="secondary-button" type="button" id="ai-caption">AI caption</button>
+                <button class="primary-button" type="submit">Publish</button>
+              </div>
+            </form>
+
+            <section class="phone-preview" aria-label="Post preview">
+              <div class="preview-media pulse" id="preview-media">
+                <img src="assets/social-ai-visual.png" alt="" />
                 <div>
-                  <p class="eyebrow">Live pilot</p>
-                  <h2>Community-built short video</h2>
-                </div>
-                <div class="reel-metrics" aria-label="Featured metrics">
-                  <span>48.2K</span>
-                  <span>12K</span>
-                  <span>1.4K</span>
+                  <span id="preview-type">Short video</span>
+                  <strong id="preview-caption">Your new post preview appears here.</strong>
                 </div>
               </div>
             </section>
-
-            <section class="composer-panel" aria-label="Post composer">
-              <div class="panel-header">
-                <h2>Create</h2>
-                <span class="status-pill">AI draft</span>
-              </div>
-              <form id="post-form" class="stacked-form">
-                <label>
-                  Caption
-                  <textarea id="post-caption" maxlength="160" placeholder="Drop a new creator update"></textarea>
-                </label>
-                <div class="media-swatches" aria-label="Visual style">
-                  <label><input type="radio" name="mediaStyle" value="violet" checked /><span class="swatch swatch-violet"></span></label>
-                  <label><input type="radio" name="mediaStyle" value="teal" /><span class="swatch swatch-teal"></span></label>
-                  <label><input type="radio" name="mediaStyle" value="amber" /><span class="swatch swatch-amber"></span></label>
-                  <label><input type="radio" name="mediaStyle" value="rose" /><span class="swatch swatch-rose"></span></label>
-                </div>
-                <button class="secondary-button" type="button" id="polish-post">
-                  <svg viewBox="0 0 24 24"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z" /></svg>
-                  Polish
-                </button>
-                <button class="primary-button full-width" type="submit">Publish</button>
-              </form>
-            </section>
-          </div>
-          <section class="post-grid" id="post-grid" aria-label="Social feed"></section>
+          </section>
         </section>
 
-        <section class="view" id="proposals-view" data-view="proposals">
-          <div class="proposal-layout">
-            <section class="proposal-form-panel" aria-label="Suggest a platform change">
-              <div class="panel-header">
-                <h2>Suggest change</h2>
-                <span class="status-pill">Poll first</span>
+        <section class="view" id="proposals-view" data-view="proposals" aria-label="Feature proposals">
+          <div class="proposal-grid">
+            <form class="panel proposal-form" id="proposal-form">
+              <div class="panel-heading">
+                <h1>Feature polls</h1>
+                <span class="pill">community</span>
               </div>
-              <form id="proposal-form" class="stacked-form">
-                <label>
-                  Feature
-                  <input id="proposal-title" maxlength="72" placeholder="Creator revenue split controls" />
-                </label>
-                <label>
-                  Details
-                  <textarea id="proposal-detail" maxlength="260" placeholder="What should change, who benefits, and what tradeoff should voters weigh?"></textarea>
-                </label>
-                <div class="proposal-tools">
-                  <button class="secondary-button" type="button" id="refine-proposal">
-                    <svg viewBox="0 0 24 24"><path d="M4 20 20 4M14 4h6v6M4 8h7M4 14h4" /></svg>
-                    Refine
-                  </button>
-                  <button class="primary-button" type="submit">Open poll</button>
-                </div>
-              </form>
-            </section>
-            <section class="proposal-list" id="proposal-list" aria-label="Community proposals"></section>
+              <label>
+                Feature
+                <input id="proposal-title" maxlength="72" placeholder="Creator storefronts" />
+              </label>
+              <label>
+                Why it matters
+                <textarea id="proposal-detail" maxlength="260" placeholder="What changes, who benefits, and what should voters consider?"></textarea>
+              </label>
+              <div class="button-row">
+                <button class="secondary-button" type="button" id="refine-proposal">Refine</button>
+                <button class="primary-button" type="submit">Open poll</button>
+              </div>
+            </form>
+            <section class="proposal-list" id="proposal-list"></section>
           </div>
         </section>
 
-        <section class="view" id="review-view" data-view="review">
-          <section class="review-toolbar">
+        <section class="view" id="inbox-view" data-view="inbox" aria-label="Inbox">
+          <div class="inbox-layout">
+            <section class="panel">
+              <div class="panel-heading">
+                <h1>Activity</h1>
+                <span class="pill" id="activity-count">0</span>
+              </div>
+              <div class="activity-list" id="activity-list"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Messages</h2>
+                <span class="pill">DM</span>
+              </div>
+              <div class="message-list" id="message-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="profile-view" data-view="profile" aria-label="Profile">
+          <section class="profile-header" id="profile-header"></section>
+          <section class="profile-grid" id="profile-grid"></section>
+        </section>
+
+        <section class="view" id="review-view" data-view="review" aria-label="Owner review">
+          <section class="panel review-toolbar">
             <div>
-              <p class="eyebrow">Final say</p>
-              <h2>Owner decision queue</h2>
+              <h1>Owner review</h1>
+              <p class="muted">Poll winners come here for the final call.</p>
             </div>
-            <div class="threshold-control">
-              <label for="threshold-range">Poll threshold</label>
+            <label>
+              Poll threshold
               <input type="range" min="30" max="90" step="5" id="threshold-range" />
               <output id="threshold-output"></output>
-            </div>
+            </label>
           </section>
-          <section class="review-list" id="review-list" aria-label="Owner review queue"></section>
+          <section class="review-list" id="review-list"></section>
         </section>
       </main>
+
+      <nav class="mobile-nav" id="mobile-nav" aria-label="Mobile navigation"></nav>
     </div>
 
-    <dialog id="suggestion-dialog">
-      <form method="dialog" class="dialog-card">
-        <div class="panel-header">
-          <h2>New suggestion</h2>
-          <button class="icon-button" value="cancel" aria-label="Close" title="Close">
-            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
-          </button>
-        </div>
-        <p class="dialog-copy">Route community changes into a poll, then decide from the owner queue.</p>
-        <button class="primary-button full-width" value="proposals">Start proposal</button>
-      </form>
-    </dialog>
-
-    <script src="app.js"></script>
+    <script src="app.js?v=3"></script>
   </body>
 </html>

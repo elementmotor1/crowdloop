@@ -1,0 +1,17 @@
+{
+  "name": "Crowdloop",
+  "short_name": "Crowdloop",
+  "start_url": "./index.html#home",
+  "display": "standalone",
+  "background_color": "#f6f3ed",
+  "theme_color": "#111111",
+  "description": "AI native social media with community voting and owner-approved feature shipping.",
+  "icons": [
+    {
+      "src": "assets/social-ai-visual.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
