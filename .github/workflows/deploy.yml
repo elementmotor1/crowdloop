@@ -1,0 +1,30 @@
+name: Deploy Crowdloop
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate static app files
+        run: |
+          test -f index.html
+          test -f styles.css
+          test -f app.js
+          node --check app.js
+
+      - name: Deploy on DigitalOcean droplet
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: /home/deploy/deploy-crowdloop
